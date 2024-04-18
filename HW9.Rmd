@@ -1,0 +1,136 @@
+---
+title: "Homework 9"
+author: "Leo Fowler"
+date: "2024-04-18"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(MatchIt)
+library(tableone)
+```
+
+## Problem 1
+
+### Part A
+```{r, echo = FALSE}
+turnout <- read.csv("turnout.csv")
+prop_called <- round(sum(turnout$GOTV_call == 1 & turnout$voted1998 == 1) / sum(turnout$GOTV_call == 1), 4)
+prop_not_called <- round(sum(turnout$GOTV_call == 0 & turnout$voted1998 == 1) / sum(turnout$GOTV_call == 0), 4)
+cat("Proportion of those receiving a GOTV call who voted in 1998:", prop_called, "\n")
+cat("Sample proportion of those not receiving a GOTV call who voted in 1998:", prop_not_called, "\n")
+
+num_called <- sum(turnout$GOTV_call == 1)
+num_not_called <- sum(turnout$GOTV_call == 0)
+se_diff <- sqrt((prop_called * (1 - prop_called) / num_called) + (prop_not_called * (1 - prop_not_called) / num_not_called))
+marg_error <- 1.96 * se_diff
+ci_lower <- (prop_called - prop_not_called) - marg_error
+ci_upper <- (prop_called - prop_not_called) + marg_error
+cat("Confidence interval:", ci_lower, "-", ci_upper)
+```
+
+### Part B
+
+```{r, echo=FALSE}
+turnout$voted1996 <- ifelse(turnout$voted1996 == 0, "No", "Yes")
+turnout$GOTV_call <- ifelse(turnout$GOTV_call == 0, "No", "Yes")
+turnout$voted1998 <- ifelse(turnout$voted1998 == 0, "No", "Yes")
+turnout$MAJORPTY <- ifelse(turnout$MAJORPTY == 0, "No", "Yes")  # Corrected conversion for MAJORPTY
+
+ggplot(turnout, aes(x = factor(voted1998))) + geom_bar() + facet_wrap(~ GOTV_call) + labs(title = "If Voted in 1996 by Call", x = "Voted 1996 or Not", y = "Frequency")
+```
+
+#### This first graph depicts two barplots of whether people are likely to vote or not based on whether they got a call or not in 1996. It shows that people are more likely to vote and not vote when they didn't get the call in 1996.There is evidence that this variable is a confounders that prevent the difference you observed ifrom representing the true causal effect of the GOTV call on the likelihood that a person voted in 1998.
+
+
+```{r, echo = FALSE}
+ggplot(turnout, aes(x = factor(GOTV_call), y = AGE)) + geom_boxplot() + facet_wrap(~ voted1998) + labs(title = "Age Distribution by Call and if Voted in 1998", x = "Call or Not", y = "Age")
+```
+
+#### This graph displays boxplots of the age distribution of whether people voted or not and got the call or not in 1988. It shows that the mean age of people is higher for people who got the call whether or not they voted.There is evidence that this variable is a confounders that prevent the difference you observed ifrom representing the true causal effect of the GOTV call on the likelihood that a person voted in 1998.
+
+
+```{r, echo = FALSE}
+ggplot(turnout, aes(x = factor(MAJORPTY), fill = factor(voted1998))) + geom_bar(position = "dodge") + labs(title = "Distribution of Major Party by if Voted in 1998", x = "Memeber of Major Party", y = "Count") + scale_fill_manual(values = c("red", "blue"), labels = c("Didn't Vote", "Voted"))
+```
+
+#### This last graph portrays the distribution of people registered to major parties and whether or not they voted in 1988. It shows that people who are registered to major parties are more likely to vote and not vote. There is evidence that this variable is a confounders that prevent the difference you observed ifrom representing the true causal effect of the GOTV call on the likelihood that a person voted in 1998.
+
+
+### Part C
+
+```{r, echo = FALSE}
+turnout <- read.csv("turnout.csv")
+matching_data <- matchit(GOTV_call ~ voted1996 + AGE + MAJORPTY, data = turnout, ratio = 5)
+matched_data <- match.data(matching_data)
+summary(matching_data)
+prop_called <- sum(turnout$GOTV_call == 1 & turnout$voted1998 == 1) / sum(turnout$GOTV_call == 1)
+prop_not_called <- sum(turnout$GOTV_call == 0 & turnout$voted1998 == 1) / sum(turnout$GOTV_call == 0)
+diff_prop <- prop_called - prop_not_called
+se_diff_prop <- sqrt((prop_called * (1 - prop_called) / sum(matched_data$GOTV_call == 1)) + (prop_not_called * (1 - prop_not_called) / sum(matched_data$GOTV_call == 0)))
+ci <- c(diff_prop - 1.96 * se_diff_prop, diff_prop + 1.96 * se_diff_prop)
+
+cat("Proportion of those receiving a call who voted in 1998:", prop_called, "\n")
+cat("Proportion of those not receiving a call who voted in 1998:", prop_not_called, "\n")
+cat("95% Confidence Interval for the difference in proportions:", ci[1], "to", ci[2], "\n")
+```
+
+#### Since the confidence interval does not include zero and is positive then the difference in the proportion of individuals who voted in 1998 who received a call and who didn't is a statistically significant. The proportion of individuals who voted in 1998 and received a call is higher than the people who didn't recieve a call. We can copnclude that the GOTV call was effective on the likelihood of people voting in the 1998 election.
+
+## Probvlem 2
+
+### Part A
+
+```{r, echo = FALSE}
+solder <- read.csv("solder.csv")
+
+ggplot(solder, aes(x = Opening, y = skips)) + geom_boxplot(fill = "blue", color = "black") + labs(title = "Relationship between Size of Oppening and Number of Skips", x = "Size of Oppening", y = "Number of Skips")
+```
+
+#### This first graph displays the relationship between the size of the oppening of the solder and the number of skips. The median for the large size is almost at 0, the medium size is slightly higher at around 2, and the small size is around 7. The variance is much greater as opening size decreases and the graph shows that as the size decreases the amount of skips increases.
+
+```{r echo = FALSE}
+ggplot(solder, aes(x = Solder, y = skips)) + geom_boxplot(fill = "lightblue", color = "black") + labs(title = "Relationship between Thickness of Alloy and Number of Skips", x = "Thickness", y = "Number of Skips")
+```
+
+#### This second graph displays the relationship between the sthickness of the alloy and the number of skips. The median for the thick alloy is at around 1 skip and the thin alloy at around 4. The variance for thin is much greater and the graph shows that tere tends to be more skips for thin alloys.
+
+### Part B
+
+```{r, echo = FALSE}
+reg_model <- lm(skips ~ Opening * Solder, data = solder)
+coef(reg_model) %>% round(4)
+
+model <- lm(skips ~ Opening * Solder, data = solder)
+coef_summary <- summary(model)$coefficients
+conf_intervals <- confint(model, level = 0.95)
+coef_table <- as.data.frame(cbind(coef_summary[, 1], conf_intervals))
+colnames(coef_table) <- c("Estimate", "Lower CI", "Upper CI")
+combinations <- c("Thick-Large", "Thick-Medium", "Thick-Small", "Thin-Large", "Thin-Medium", "Thin-Small")
+coef_table$Combination <- combinations
+print(coef_table)
+```
+
+
+### Part C
+
+#### When thickness and opening size are thick and large there is an estimated rate of change of 0.3933 in each when holding all other variables constant.
+
+#### When thickness and opening size are thick and medium there is an estimated 2.4066 more skips happening compared to the intercept of .39 skips when holding all other variable constant.
+
+#### When thickness and opening size are thick and small there is an estimated 5.1267 more skips happening compared to the intercept of .39 skips when holding all other variable constant.
+
+#### When thickness and opening size are thin and large there is an estimated 2.28 more skips happening compared to the intercept of .39 skips when holding all other variable constant.
+
+#### When thickness and opening size are thin and medium there is an estimated 0.74 less skips happening compared to the intercept of .39 skips when holding all other variable constant.
+
+#### When thickness and opening size are thin and small there is an estimated 9.6533 more skips happening compared to the intercept of .39 skips when holding all other variable constant.
+
+### Part D
+
+#### If I had to reccomend a combination I would reccomend the thin and medium combination because it was the only combuination that the estimate resulted in less skips than the intercept. The estimate was -0.74 for thin and medium which was the only negative value out of them. This lesser value would minimize the number of skips in the manufacturing process.
